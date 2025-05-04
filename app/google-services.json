@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "277434779059",
+    "project_id": "ngp-app-509a8",
+    "storage_bucket": "ngp-app-509a8.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:277434779059:android:439de0150927a68ec5f7c6",
+        "android_client_info": {
+          "package_name": "com.example.ngpadminapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "277434779059-fsmoua66d3l2b76888jl6niritbpprgp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEezePTgcsecu02vqPeEUsk4np59wCnb0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "277434779059-fsmoua66d3l2b76888jl6niritbpprgp.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

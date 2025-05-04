@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">NGP Admin App</string>
+    <string name="add_teacher">Add Teacher</string>
+    <string name="contact">Contact</string>
+    <string name="email">Email</string>
+    <string name="name">Name</string>
+</resources>
