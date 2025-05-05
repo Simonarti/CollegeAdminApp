@@ -29,154 +29,130 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
-import com.google.firebase.storage.internal.StorageReferenceUri;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 public class UploadImage extends AppCompatActivity {
 
-    private Spinner ImageCategory;
+    private Spinner imageCategory;
     private CardView selectImage;
     private Button uploadImage;
     private ImageView galleryImageView;
 
     private String category;
-    private final int REQ=1;
+    private static final int REQ = 1;
     private Bitmap bitmap;
-    ProgressDialog pd;
+    private ProgressDialog pd;
 
     private DatabaseReference reference;
     private StorageReference storageReference;
-    String downloadUrl;
+    private String downloadUrl = "";
 
     @SuppressLint("MissingInflatedId")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_upload_image);
+
+        // UI Component Bindings
         selectImage = findViewById(R.id.addGalleryImage);
-        ImageCategory = findViewById(R.id.image_category);
+        imageCategory = findViewById(R.id.image_category);
         uploadImage = findViewById(R.id.uploadImageBtn);
         galleryImageView = findViewById(R.id.galleryImageView);
 
+        // Firebase Initialization
         reference = FirebaseDatabase.getInstance().getReference().child("gallery");
         storageReference = FirebaseStorage.getInstance().getReference().child("gallery");
 
-        pd= new ProgressDialog(this );
+        pd = new ProgressDialog(this);
 
-        String [] items = new String[]{"Select Category", "Inauguration", "Independence Day", "Others Events"};
-        ImageCategory.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item,items));
+        // Spinner Configuration
+        String[] items = new String[]{"Select Category", "Inauguration", "Independence Day", "Other Events"};
+        imageCategory.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, items));
 
-        ImageCategory.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        imageCategory.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                category = ImageCategory.getSelectedItem().toString();
+                category = imageCategory.getSelectedItem().toString();
             }
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
-
+                category = "Select Category";
             }
         });
 
-        selectImage.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                openGallery();
+        selectImage.setOnClickListener(view -> openGallery());
 
+        uploadImage.setOnClickListener(view -> {
+            if (bitmap == null) {
+                Toast.makeText(UploadImage.this, "Please select an image", Toast.LENGTH_SHORT).show();
+            } else if (category.equals("Select Category")) {
+                Toast.makeText(UploadImage.this, "Please select a valid image category", Toast.LENGTH_SHORT).show();
+            } else {
+                pd.setMessage("Uploading...");
+                pd.show();
+                uploadImageToFirebase();
             }
         });
-
-        uploadImage.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (bitmap== null){
-                    Toast.makeText(UploadImage.this, "Please Upload Image", Toast.LENGTH_SHORT).show();
-                }else if (category == null || category.equals("Select Category")){
-                    Toast.makeText(UploadImage.this, "Please Select Image Category", Toast.LENGTH_SHORT).show();
-                }else {
-                    pd.setMessage("Uploading...");
-                    pd.show();
-                    uploadImage();
-                }
-
-            }
-        });
-
-
-
     }
 
-    private void uploadImage() {
+    private void uploadImageToFirebase() {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.JPEG, 50, baos);
-        byte[] finalimg = baos.toByteArray();
-        final StorageReference filePath;
-        filePath = storageReference.child(finalimg+"jpg");
-        final UploadTask uploadTask = filePath.putBytes(finalimg);
-        uploadTask.addOnCompleteListener(UploadImage.this, new OnCompleteListener<UploadTask.TaskSnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<UploadTask.TaskSnapshot> task) {
-                if(task.isSuccessful()) {
-                    uploadTask.addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                        @Override
-                        public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                            filePath.getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-                                @Override
-                                public void onSuccess(Uri uri) {
-                                    downloadUrl = String.valueOf(uri);
-                                    uploadData();
+        byte[] finalImg = baos.toByteArray();
 
-                                }
-                            });
+        final StorageReference filePath = storageReference.child(System.currentTimeMillis() + ".jpg");
+        final UploadTask uploadTask = filePath.putBytes(finalImg);
 
-                        }
-                    });
-                }else {
-                    pd.dismiss();
-                    Toast.makeText(UploadImage.this, "Something Went Wrong", Toast.LENGTH_SHORT).show();
-                }
-            }
-
+        uploadTask.addOnSuccessListener(taskSnapshot -> filePath.getDownloadUrl().addOnSuccessListener(uri -> {
+            downloadUrl = uri.toString();
+            uploadImageData();
+        })).addOnFailureListener(e -> {
+            pd.dismiss();
+            Toast.makeText(UploadImage.this, "Upload failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         });
     }
 
-    private void uploadData() {
-        reference = reference.child(category);
-        final  String uniqueKey = reference.push().getKey();
-        reference.child(uniqueKey).setValue(downloadUrl).addOnSuccessListener(new OnSuccessListener<Void>() {
-            @Override
-            public void onSuccess(Void unused) {
-                pd.dismiss();
-                Toast.makeText(UploadImage.this, "Image Uploaded Successfully", Toast.LENGTH_SHORT).show();
+    private void uploadImageData() {
+        final String uniqueKey = reference.child(category).push().getKey();
+        reference.child(category).child(uniqueKey).setValue(downloadUrl)
+                .addOnSuccessListener(unused -> {
+                    pd.dismiss();
+                    Toast.makeText(UploadImage.this, "Image uploaded successfully", Toast.LENGTH_SHORT).show();
+                    clearForm();
+                })
+                .addOnFailureListener(e -> {
+                    pd.dismiss();
+                    Toast.makeText(UploadImage.this, "Database error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
+    }
 
-            }
-        }).addOnFailureListener(new OnFailureListener() {
-            @Override
-            public void onFailure(@NonNull Exception e) {
-                pd.dismiss();
-                Toast.makeText(UploadImage.this, "Something Went Wrong", Toast.LENGTH_SHORT).show();
-
-            }
-        });
+    private void clearForm() {
+        galleryImageView.setImageResource(0);
+        bitmap = null;
+        imageCategory.setSelection(0);
     }
 
     private void openGallery() {
         Intent pickImage = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        startActivityForResult(pickImage,REQ);
+        startActivityForResult(pickImage, REQ);
     }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if(requestCode== REQ && resultCode==RESULT_OK){
+
+        if (requestCode == REQ && resultCode == RESULT_OK && data != null && data.getData() != null) {
             Uri uri = data.getData();
             try {
-                bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(),uri);
+                bitmap = MediaStore.Images.Media.getBitmap(getContentResolver(), uri);
+                galleryImageView.setImageBitmap(bitmap);
             } catch (IOException e) {
                 e.printStackTrace();
+                Toast.makeText(this, "Failed to load image", Toast.LENGTH_SHORT).show();
             }
-            galleryImageView.setImageBitmap(bitmap);
         }
     }
 }
